@@ -6,4 +6,5 @@
  - Run `deploy.cmd` (will overwrite default `ActivityLog.xsl` in parent folder; Visual Studio will replace it after restart!)
  - Open `ActivityLog.xml` in Internet Explorer
 
-Read more on my blog: http://startbigthinksmall.wordpress.com/2011/11/08/activity-log-profiler-find-out-which-extension-is-slowing-down-your-visual-studio/
+Read more on my blog: 
+http://startbigthinksmall.wordpress.com/2011/11/08/activity-log-profiler-find-out-which-extension-is-slowing-down-your-visual-studio/
