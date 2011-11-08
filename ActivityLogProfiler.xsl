@@ -9,25 +9,23 @@
   
   How to use with GIT (2):
     1) Open Commandwindow in '%AppData%\Roaming\Microsoft\VisualStudio\10.0'
-	2) Run 'git clone https://github.com/lcorneliussen/ActivityLogProfiler'
-    3) Then start Visual Studio with '/Log' switch
-	4) Then change first line in ActivityLog.xml to reference 'ActivityLogProfiler\ActivityLogProfiler.xsl'
-	5) Open '%AppData%\Roaming\Microsoft\VisualStudio\10.0\ActivityLog.xml' in Internet Explorer
-	
-	(Visual Studio will recreate both ActivityLog.xml and ActivityLog.xsl each
-	time it is started with '/Log'; but it will not change the reference to
-	the XSL file when it adds new log entries.
-	
+    2) Run 'git clone https://github.com/lcorneliussen/ActivityLogProfiler'
+    3) Start Visual Studio with '/Log' switch
+    4) Run 'deploy.cmd' (will override '../ActivityLog.xsl'
+    5) Open '%AppData%\Roaming\Microsoft\VisualStudio\10.0\ActivityLog.xml' in Internet Explorer
+    
+  Now you only have to repeat 3) and 4) to produce new logs, as Visual Studio will 
+  recreate both ActivityLog.xml and ActivityLog.xsl each time it is started with '/Log'.
+  
   How to use without GIT (1):
-    1) Copy this file manually somewhere, for example to '%AppData%\Roaming\Microsoft\VisualStudio\10.0'
-	2) Then start Visual Studio with '/Log' switch
-	3) Then change first line in 'ActivityLog.xml' to reference your copy of 'ActivityLogProfiler.xsl'
-	4) Open '%AppData%\Roaming\Microsoft\VisualStudio\10.0\ActivityLog.xml' in Internet Explorer
+    1) Start Visual Studio with '/Log' switch
+    2) Replace '%AppData%\Roaming\Microsoft\VisualStudio\10.0\ActivityProfiler.xsl' with this one
+    3) Open '%AppData%\Roaming\Microsoft\VisualStudio\10.0\ActivityLog.xml' in Internet Explorer
 
   -->
 
   <!-- nothing should take more than 500 ms :-) -->
-  <xsl:variable name="thresholdTime" select="number(0.5)"/>
+  <xsl:variable name="thresholdTime" select="number(0.2)"/>
   
   <!-- make a red line per "tick" -->
   <xsl:variable name="visualTickEveryXSeconds" select="number(1)"/>
@@ -55,15 +53,28 @@
   <xsl:template match="entry" mode="annotate">
 
     <xsl:copy>
-
       <xsl:variable name="isBeginPackageLoad" select="starts-with(description, 'Begin package load ')"/>
       <xsl:variable name="isEndPackageLoad" select="starts-with(description, 'End package load ')"/>
+
+      <xsl:variable name="isEnteringFunction" select="starts-with(description, 'Entering function ')"/>
+      <xsl:variable name="isLeavingFunction" select="starts-with(description, 'Leaving function ')"/>
+
+      <xsl:if test="$isLeavingFunction">
+        <xsl:attribute name="type">leaving-typelib-call</xsl:attribute>
+      </xsl:if>
+
+      <xsl:if test="$isEndPackageLoad">
+        <xsl:attribute name="type">package-loaded</xsl:attribute>
+      </xsl:if>
+
+      <xsl:variable name="isBeginRecord" select="$isEnteringFunction"/> 
 
       <xsl:variable name="previousRecordNumer" select="number(record)-1"/>
       <xsl:variable name="previousRecord" select="/activity/entry[record=$previousRecordNumer]"/>
 
-      <xsl:variable name="correlatingBeginDescription" select="concat('Begin', substring(description, 4))"/>
-      <xsl:variable name="correlatingBeginRecord" select="/activity/entry[description=$correlatingBeginDescription]"/>
+      <xsl:variable name="correlatingBeginDescription1" select="concat('Begin', substring(description, 4))"/>
+      <xsl:variable name="correlatingBeginDescription2" select="concat('Entering', substring(description, 8))"/>
+      <xsl:variable name="correlatingBeginRecord" select="(preceding-sibling::entry[description=$correlatingBeginDescription1 or description=$correlatingBeginDescription2])[last()]"/>
 
       <xsl:if test="$correlatingBeginRecord/record">
         <xsl:attribute name="correlatingBeginRecordNumber"><xsl:value-of select="$correlatingBeginRecord/record"/></xsl:attribute>
@@ -99,19 +110,20 @@
 
       <xsl:variable name="secondsUsed" select="$currentSeconds - $refPointSeconds"/>
 
-      <xsl:attribute name="secondsUsed">
-        <xsl:value-of select="$secondsUsed"/>
-      </xsl:attribute>
+      <xsl:if test="not($isBeginRecord)">
+        <xsl:attribute name="secondsUsed">
+          <xsl:value-of select="$secondsUsed"/>
+        </xsl:attribute>
+      </xsl:if>
 
       <xsl:variable name="secondsSinceStart" select="$currentSeconds - $firstEntrySeconds"/>
       <xsl:attribute name="secondsSinceStart">
         <xsl:value-of select="$secondsSinceStart"/>
       </xsl:attribute>
 
-
       <xsl:variable name="exeedsThresholdTime" select="$secondsUsed &gt; $thresholdTime" />
       <xsl:attribute name="exeedsThresholdTime">
-        <xsl:value-of select="$exeedsThresholdTime"/>
+        <xsl:value-of select="$exeedsThresholdTime and not($isBeginRecord)"/>
       </xsl:attribute>
 
       <xsl:attribute name="tick">
@@ -140,13 +152,15 @@
 
         table{ border: none;  border-collapse: separate;  width: 100%; table-layout: fixed;}
 
-        tr.title td{ font-size: 24px;  font-weight: bold; }
+        h1 { font-size: 24px;  font-weight: bold; }
+        h2 { font-size: 18px;  font-weight: bold; }
 
         th{ background: #d0d0d0;  font-weight: bold;  font-size: 10pt;  text-align: left; }
         tr{ background: #eeeeee}
         td, th{ font-size: 8pt;  padding: 1px;  border: none; }
 
-        tr.info td {
+        tr td, tr th {
+          padding: 4px;
         }
         
         tr.tick td {
@@ -177,16 +191,21 @@
           background-color: #d0d0d0;
         }
 
-        span {text-decoration:underline}
         a:hover{text-transform:uppercase;color: #9090F0;}
+        
+        .authorInfo, h2 span { font-size: 10px; }
+        
+        .decription .path {
+          font-family: 'Courier New';
+        }
       </style>
     </head>
 
     <body>
+      <h1>
+        Activity Monitor Log Profiler <a class="authorInfo" href="https://github.com/lcorneliussen/ActivityLogProfiler/edit">... by Lars Corneliussen</a>
+      </h1>
       <table>
-        <tr class="title">
-          <td colspan="7">Activity Monitor Log</td>
-        </tr>
         <tr>
           <td>Infos:</td>
           <td>
@@ -212,15 +231,47 @@
           </td>
         </tr>
       </table>
+
+      <h2>Hot Spots <span>(&gt; <xsl:value-of select="$thresholdTime"/> second(s))</span></h2>
+      <table class="hotspots">
+        <tr>
+          <th style="width:30px;text-align:center;">#</th>
+          <th style="width:100%">Description</th>
+          <th style="width:120px">Used Seconds</th>
+        </tr>
+        <xsl:for-each select="entry[number(@secondsUsed) &gt;= $thresholdTime]">
+          <xsl:sort data-type="number" select="@secondsUsed" order="descending"/>
+          <tr>
+            <td class="id" align="right">
+              <a href="#{record}"><xsl:value-of select="record"/></a>
+            </td>
+            <td class="description">
+              <xsl:value-of select="description"/>
+              <xsl:if test="path">, in <span class="path">
+                  <xsl:value-of select="path"/>
+                </span>
+              </xsl:if>
+              <xsl:if test="guid">
+                <xsl:value-of select="guid"/>
+              </xsl:if>
+            </td>
+            <td align="right" class="seconds">
+              <xsl:value-of select="round(number(@secondsUsed) * 1000) div 1000"/> seconds
+            </td>
+          </tr>
+        </xsl:for-each>
+      </table>
+
+      <h2>Log Entries</h2>
       <table>
         <tr>
-          <th style="width:20px">#</th>
+          <th style="width:30px;text-align:center;">#</th>
           <th style="width:50px">Type</th>
           <th style="width:80%">Description</th>
           <th style="width:150px">GUID</th>
           <th style="width:50px">Hr</th>
           <th style="width:20%">Source</th>
-          <th style="width:160px">Time (UTC)</th>
+          <th style="width:155px">Time (UTC)</th>
         </tr>
         <xsl:apply-templates/>
       </table>
@@ -261,33 +312,43 @@
     <xsl:variable name="currentTick" select="@tick"/>
 
     <tr class="{$classes}">
-      <td>  
-        <xsl:value-of select="record"/>
+      <td class="number" align="right">
+        <a name="{record}">
+          <xsl:value-of select="record"/>
+        </a>
       </td>
-      <td>
+      <td class="type">
         <xsl:if test="type != 'Information'">
           <xsl:value-of select="type"/>
         </xsl:if>
       </td>
-      <td id="description">
+      <td class="description">
         <xsl:value-of select="description"/>
         <xsl:if test="path"> 
           <br/>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;<xsl:value-of select="path"/>
         </xsl:if>
       </td>
-      <td id="guid">
+      <td class="guid">
         <xsl:value-of select="guid"/>
       </td>
-      <td id="hr">
+      <td class="hr">
         <xsl:value-of select="hr"/>
       </td>
-      <td>
+      <td class="source">
         <xsl:value-of select="source"/>
       </td>
-      <td>
+      <td class="time" align="center">
         <xsl:value-of select="time"/>
         <xsl:if test="@correlatingBeginRecordNumber or @exeedsThresholdTime='true'">
-          <br/> <b>(used <xsl:value-of select="round(number(@secondsUsed) * 1000) div 1000"/> seconds)</b>
+          <br/> <b>used <xsl:value-of select="round(number(@secondsUsed) * 1000) div 1000"/> seconds <br/> since 
+            <xsl:choose>
+              <xsl:when test="@correlatingBeginRecordNumber">
+                <a href="#{@correlatingBeginRecordNumber}">
+                  #<xsl:value-of select="@correlatingBeginRecordNumber"/>
+                </a>
+              </xsl:when>
+              <xsl:otherwise>last record</xsl:otherwise>
+            </xsl:choose></b>
         </xsl:if>
       </td>
     </tr>
