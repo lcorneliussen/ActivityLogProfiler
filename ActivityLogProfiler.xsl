@@ -7,13 +7,23 @@
   <!-- 
   Created by lcorneliussen, based on original ActivityLog.xsl
   
-  How to use:
-    1) Copy file to %AppData%\Roaming\Microsoft\VisualStudio\10.0
+  How to use with GIT (2):
+    1) Open Commandwindow in '%AppData%\Roaming\Microsoft\VisualStudio\10.0'
+	2) Run 'git clone https://github.com/lcorneliussen/ActivityLogProfiler'
+    3) Then start Visual Studio with '/Log' switch
+	4) Then change first line in ActivityLog.xml to reference 'ActivityLogProfiler\ActivityLogProfiler.xsl'
+	5) Open '%AppData%\Roaming\Microsoft\VisualStudio\10.0\ActivityLog.xml' in Internet Explorer
+	
+	(Visual Studio will recreate both ActivityLog.xml and ActivityLog.xsl each
+	time it is started with '/Log'; but it will not change the reference to
+	the XSL file when it adds new log entries.
+	
+  How to use without GIT (1):
+    1) Copy this file manually somewhere, for example to '%AppData%\Roaming\Microsoft\VisualStudio\10.0'
 	2) Then start Visual Studio with '/Log' switch
-	3) Then change first line in ActivityLog.xml to reference ActivityLogProfiler.xsl"?>
-	   (Visual Studio will recreate both ActivityLog.xml and ActivityLog.xsl each
-	    time it is started with '/Log'; but it will not change the reference to
-		the XSL file when it adds new log entries.
+	3) Then change first line in 'ActivityLog.xml' to reference your copy of 'ActivityLogProfiler.xsl'
+	4) Open '%AppData%\Roaming\Microsoft\VisualStudio\10.0\ActivityLog.xml' in Internet Explorer
+
   -->
 
   <!-- nothing should take more than 500 ms :-) -->
